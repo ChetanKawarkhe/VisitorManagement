@@ -1,7 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using VisitorManagement.Application.Interfaces;
 using VisitorManagement.Infrastructure.Persistence;
+using VisitorManagement.Infrastructure.Repositories;
 
 namespace VisitorManagement.Infrastructure;
 
@@ -26,6 +28,12 @@ public static class DependencyInjection
         });
 
         services.AddScoped<DatabaseSeeder>();
+
+        services.AddScoped<IVisitorRepository, VisitorRepository>();
+        services.AddScoped<IHostRepository, HostRepository>();
+        services.AddScoped<IPurposeRepository, PurposeRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         return services;
     }
