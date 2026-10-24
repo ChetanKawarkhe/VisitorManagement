@@ -13,6 +13,9 @@
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+# Azure Functions local configuration
+**/local.settings.json
+
 # Mono auto generated files
 mono_crash.*
 
@@ -35,6 +38,8 @@ bld/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
+**/bin/
+**/obj/
 # Uncomment if you have tasks that create the project's static files in wwwroot
 #wwwroot/
 
@@ -349,6 +354,30 @@ ASALocalRun/
 
 # Local History for Visual Studio
 .localhistory/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+**/appsettings.Development.json
+**/appsettings.Production.json
+**/appsettings.Local.json
+
+# Logs
+logs/
+**/logs/
+*.log
+
+# Azurite
+__azurite_db_*
+__blobstorage__/
+__queuestorage__/
+__tablestorage__/
+azurite-data/
+
+# Local database files
+*.mdf
+*.ldf
 
 # BeatPulse healthcheck temp database
 healthchecksdb
