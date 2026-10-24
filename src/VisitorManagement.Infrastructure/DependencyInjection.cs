@@ -1,7 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VisitorManagement.Application.Interfaces;
+using VisitorManagement.Domain.Entities;
+using VisitorManagement.Infrastructure.Authentication;
 using VisitorManagement.Infrastructure.Persistence;
 using VisitorManagement.Infrastructure.Repositories;
 
@@ -29,11 +32,23 @@ public static class DependencyInjection
 
         services.AddScoped<DatabaseSeeder>();
 
+        // Repository registrations
         services.AddScoped<IVisitorRepository, VisitorRepository>();
         services.AddScoped<IHostRepository, HostRepository>();
         services.AddScoped<IPurposeRepository, PurposeRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+
+        // Unit of Work
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+
+        // Authentication
+        services.Configure<JwtOptions>(
+            configuration.GetSection(JwtOptions.SectionName));
+
+        services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
+        services.AddScoped<IPasswordVerifier, PasswordVerifier>();
+        services.AddScoped<ITokenGenerator, JwtTokenGenerator>();
 
         return services;
     }
