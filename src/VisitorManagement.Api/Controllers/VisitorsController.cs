@@ -1,5 +1,4 @@
 ﻿using System.Security.Claims;
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using VisitorManagement.Application.DTOs.Visitors;
@@ -26,7 +25,9 @@ public sealed class VisitorsController : ControllerBase
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
-    [ProducesResponseType(typeof(VisitorResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(VisitorResponse),
+        StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -36,30 +37,25 @@ public sealed class VisitorsController : ControllerBase
     {
         int currentUserId = GetCurrentUserId();
 
-        try
-        {
-            var visitor = await _visitorService.CreateAsync(
-                request,
-                currentUserId,
-                cancellationToken);
+        var visitor = await _visitorService.CreateAsync(
+            request,
+            currentUserId,
+            cancellationToken);
 
-            _logger.LogInformation(
-                "Visitor created successfully. VisitorId: {VisitorId}",
-                visitor.Id);
+        _logger.LogInformation(
+            "Visitor created. VisitorId: {VisitorId}",
+            visitor.Id);
 
-            return CreatedAtAction(
-                nameof(GetById),
-                new { id = visitor.Id },
-                visitor);
-        }
-        catch (ValidationException ex)
-        {
-            return CreateValidationResponse(ex);
-        }
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = visitor.Id },
+            visitor);
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(PagedResult<VisitorResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(PagedResult<VisitorResponse>),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> Search(
         [FromQuery] VisitorSearchRequest request,
         CancellationToken cancellationToken)
@@ -72,7 +68,9 @@ public sealed class VisitorsController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
-    [ProducesResponseType(typeof(VisitorResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(VisitorResponse),
+        StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(
         int id,
@@ -84,10 +82,8 @@ public sealed class VisitorsController : ControllerBase
 
         if (visitor is null)
         {
-            return NotFound(new
-            {
-                Message = "Visitor record was not found."
-            });
+            throw new NotFoundException(
+                "Visitor record was not found.");
         }
 
         return Ok(visitor);
@@ -95,7 +91,9 @@ public sealed class VisitorsController : ControllerBase
 
     [HttpPut("{id:int}")]
     [Authorize(Roles = "Admin")]
-    [ProducesResponseType(typeof(VisitorResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(VisitorResponse),
+        StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -106,38 +104,17 @@ public sealed class VisitorsController : ControllerBase
     {
         int currentUserId = GetCurrentUserId();
 
-        try
-        {
-            var visitor = await _visitorService.UpdateAsync(
-                id,
-                request,
-                currentUserId,
-                cancellationToken);
+        var visitor = await _visitorService.UpdateAsync(
+            id,
+            request,
+            currentUserId,
+            cancellationToken);
 
-            _logger.LogInformation(
-                "Visitor updated successfully. VisitorId: {VisitorId}",
-                visitor.Id);
+        _logger.LogInformation(
+            "Visitor updated. VisitorId: {VisitorId}",
+            visitor.Id);
 
-            return Ok(visitor);
-        }
-        catch (ValidationException ex)
-        {
-            return CreateValidationResponse(ex);
-        }
-        catch (NotFoundException ex)
-        {
-            return NotFound(new
-            {
-                Message = ex.Message
-            });
-        }
-        catch (ConcurrencyConflictException ex)
-        {
-            return Conflict(new
-            {
-                Message = ex.Message
-            });
-        }
+        return Ok(visitor);
     }
 
     private int GetCurrentUserId()
@@ -152,25 +129,5 @@ public sealed class VisitorsController : ControllerBase
         }
 
         return id;
-    }
-
-    private BadRequestObjectResult CreateValidationResponse(
-        ValidationException exception)
-    {
-        var errors = exception.Errors
-            .GroupBy(x => x.PropertyName)
-            .ToDictionary(
-                group => group.Key,
-                group => group
-                    .Select(x => x.ErrorMessage)
-                    .ToArray());
-
-        return BadRequest(new
-        {
-            Status = 400,
-            Title = "Validation Failed",
-            Message = "Please correct the highlighted fields.",
-            Errors = errors
-        });
     }
 }

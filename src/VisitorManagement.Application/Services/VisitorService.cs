@@ -14,6 +14,7 @@ public sealed class VisitorService : IVisitorService
     private readonly IPurposeRepository _purposeRepository;
     private readonly IAuditLogRepository _auditLogRepository;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICorrelationContext _correlationContext;
     private readonly IValidator<CreateVisitorRequest> _createValidator;
     private readonly IValidator<UpdateVisitorRequest> _updateValidator;
 
@@ -23,6 +24,7 @@ public sealed class VisitorService : IVisitorService
         IPurposeRepository purposeRepository,
         IAuditLogRepository auditLogRepository,
         IUnitOfWork unitOfWork,
+        ICorrelationContext correlationContext,
         IValidator<CreateVisitorRequest> createValidator,
         IValidator<UpdateVisitorRequest> updateValidator)
     {
@@ -31,6 +33,7 @@ public sealed class VisitorService : IVisitorService
         _purposeRepository = purposeRepository;
         _auditLogRepository = auditLogRepository;
         _unitOfWork = unitOfWork;
+        _correlationContext = correlationContext;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
     }
@@ -75,7 +78,7 @@ public sealed class VisitorService : IVisitorService
                         VisitorId = visitor.Id,
                         Action = "VisitorCreated",
                         PerformedByUserId = currentUserId,
-                        CorrelationId = Guid.NewGuid().ToString(),
+                        CorrelationId = _correlationContext.CorrelationId,
                         Source = "DB",
                         Timestamp = DateTime.UtcNow
                     },
@@ -118,8 +121,12 @@ public sealed class VisitorService : IVisitorService
 
         string sortBy = request.SortBy?.Trim() ?? "VisitDate";
 
-        if (!sortBy.Equals("VisitorName", StringComparison.OrdinalIgnoreCase) &&
-            !sortBy.Equals("VisitDate", StringComparison.OrdinalIgnoreCase))
+        if (!sortBy.Equals(
+                "VisitorName",
+                StringComparison.OrdinalIgnoreCase) &&
+            !sortBy.Equals(
+                "VisitDate",
+                StringComparison.OrdinalIgnoreCase))
         {
             sortBy = "VisitDate";
         }
@@ -134,7 +141,10 @@ public sealed class VisitorService : IVisitorService
 
         return new PagedResult<VisitorResponse>
         {
-            Items = result.Items.Select(MapToResponse).ToList(),
+            Items = result.Items
+                .Select(MapToResponse)
+                .ToList(),
+
             TotalCount = result.TotalCount,
             Page = page,
             PageSize = pageSize
@@ -172,7 +182,7 @@ public sealed class VisitorService : IVisitorService
         if (!existing.RowVersion.SequenceEqual(expectedRowVersion))
         {
             throw new ConcurrencyConflictException(
-                "This visitor record was modified by another user. Please refresh and try again.");
+                "This visitor record was modified by another user.");
         }
 
         existing.VisitorName = request.VisitorName.Trim();
@@ -183,9 +193,11 @@ public sealed class VisitorService : IVisitorService
         existing.HostId = request.HostId;
         existing.PurposeId = request.PurposeId;
         existing.Remarks = NormalizeOptional(request.Remarks);
+
         existing.Status = Enum.Parse<VisitorStatus>(
             request.Status,
             true);
+
         existing.UpdatedAt = DateTime.UtcNow;
         existing.UpdatedByUserId = currentUserId;
 
@@ -205,7 +217,8 @@ public sealed class VisitorService : IVisitorService
                             VisitorId = existing.Id,
                             Action = "VisitorUpdated",
                             PerformedByUserId = currentUserId,
-                            CorrelationId = Guid.NewGuid().ToString(),
+                            CorrelationId =
+                                _correlationContext.CorrelationId,
                             Source = "DB",
                             Timestamp = DateTime.UtcNow
                         },
@@ -217,7 +230,7 @@ public sealed class VisitorService : IVisitorService
             ex.GetType().Name == "DbUpdateConcurrencyException")
         {
             throw new ConcurrencyConflictException(
-                "This visitor record was modified by another user. Please refresh and try again.");
+                "This visitor record was modified by another user.");
         }
 
         var updated = await _visitorRepository.GetByIdAsync(
@@ -238,24 +251,27 @@ public sealed class VisitorService : IVisitorService
         int purposeId,
         CancellationToken cancellationToken)
     {
-        var failures = new List<FluentValidation.Results.ValidationFailure>();
+        var failures =
+            new List<FluentValidation.Results.ValidationFailure>();
 
         if (!await _hostRepository.ExistsAndActiveAsync(
             hostId,
             cancellationToken))
         {
-            failures.Add(new FluentValidation.Results.ValidationFailure(
-                "HostId",
-                "Please select a valid active host."));
+            failures.Add(
+                new FluentValidation.Results.ValidationFailure(
+                    "HostId",
+                    "Please select a valid active host."));
         }
 
         if (!await _purposeRepository.ExistsAndActiveAsync(
             purposeId,
             cancellationToken))
         {
-            failures.Add(new FluentValidation.Results.ValidationFailure(
-                "PurposeId",
-                "Please select a valid active visit purpose."));
+            failures.Add(
+                new FluentValidation.Results.ValidationFailure(
+                    "PurposeId",
+                    "Please select a valid active visit purpose."));
         }
 
         if (failures.Count > 0)
@@ -290,7 +306,8 @@ public sealed class VisitorService : IVisitorService
             CreatedAt = visitor.CreatedAt,
             CreatedByUserId = visitor.CreatedByUserId,
             UpdatedAt = visitor.UpdatedAt,
-            RowVersion = Convert.ToBase64String(visitor.RowVersion)
+            RowVersion = Convert.ToBase64String(
+                visitor.RowVersion)
         };
     }
 }

@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using VisitorManagement.Api.Middleware;
+using VisitorManagement.Api.Models;
 using VisitorManagement.Application.DTOs.Auth;
 using VisitorManagement.Application.Interfaces;
 
@@ -10,10 +13,14 @@ namespace VisitorManagement.Api.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IValidator<LoginRequest> _loginValidator;
 
-    public AuthController(IAuthService authService)
+    public AuthController(
+        IAuthService authService,
+        IValidator<LoginRequest> loginValidator)
     {
         _authService = authService;
+        _loginValidator = loginValidator;
     }
 
     [HttpPost("login")]
@@ -22,14 +29,9 @@ public sealed class AuthController : ControllerBase
         [FromBody] LoginRequest request,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Username) ||
-            string.IsNullOrWhiteSpace(request.Password))
-        {
-            return BadRequest(new
-            {
-                Message = "Username and password are required."
-            });
-        }
+        await _loginValidator.ValidateAndThrowAsync(
+            request,
+            cancellationToken);
 
         var response = await _authService.LoginAsync(
             request,
@@ -37,11 +39,11 @@ public sealed class AuthController : ControllerBase
 
         if (response is null)
         {
-            return Unauthorized(new
-            {
-                Message =
-                    "Invalid username or password. Please verify your credentials and try again."
-            });
+            return Unauthorized(
+                CreateErrorResponse(
+                    StatusCodes.Status401Unauthorized,
+                    "Unauthorized",
+                    "Invalid username or password. Please verify your credentials and try again."));
         }
 
         return Ok(response);
@@ -54,8 +56,10 @@ public sealed class AuthController : ControllerBase
         return Ok(new
         {
             Username = User.Identity?.Name,
+
             UserId = User.FindFirst(
                 System.Security.Claims.ClaimTypes.NameIdentifier)?.Value,
+
             Role = User.FindFirst(
                 System.Security.Claims.ClaimTypes.Role)?.Value
         });
@@ -69,5 +73,25 @@ public sealed class AuthController : ControllerBase
         {
             Message = "Admin authorization successful."
         });
+    }
+
+    private ApiErrorResponse CreateErrorResponse(
+        int status,
+        string title,
+        string message)
+    {
+        string correlationId =
+            HttpContext.Items.TryGetValue(
+                CorrelationIdMiddleware.ItemKey,
+                out var value)
+            && value is string id
+                ? id
+                : Guid.NewGuid().ToString("D");
+
+        return ApiErrorResponse.Create(
+            status,
+            title,
+            message,
+            correlationId);
     }
 }
