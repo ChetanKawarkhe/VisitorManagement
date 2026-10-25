@@ -15,6 +15,7 @@ public sealed class VisitorApiService
         _httpClientFactory = httpClientFactory;
     }
 
+    // Existing functionality: Create visitor.
     public async Task<CreateVisitorResult> CreateAsync(
         CreateVisitorRequest visitor,
         CancellationToken cancellationToken = default)
@@ -57,7 +58,7 @@ public sealed class VisitorApiService
         }
         catch (JsonException)
         {
-            // Preserve the original correlation ID.
+            // Preserve the request correlation ID.
         }
         catch (NotSupportedException)
         {
@@ -74,6 +75,46 @@ public sealed class VisitorApiService
             Errors = apiError?.Errors
                 ?? new Dictionary<string, string[]>()
         };
+    }
+
+    // New functionality: Search, sort, and paginate visitors.
+    public async Task<PagedResult<VisitorResponse>> SearchAsync(
+        VisitorSearchRequest searchRequest,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(searchRequest);
+
+        var client = _httpClientFactory.CreateClient(
+            "VisitorManagementApi");
+
+        var queryParameters = new List<string>
+        {
+            $"SortBy={Uri.EscapeDataString(searchRequest.SortBy)}",
+            $"Descending={searchRequest.Descending.ToString().ToLowerInvariant()}",
+            $"Page={searchRequest.Page}",
+            $"PageSize={searchRequest.PageSize}"
+        };
+
+        if (!string.IsNullOrWhiteSpace(searchRequest.Search))
+        {
+            queryParameters.Add(
+                $"Search={Uri.EscapeDataString(searchRequest.Search.Trim())}");
+        }
+
+        string url = "api/visitors?" +
+                     string.Join("&", queryParameters);
+
+        using var response = await client.GetAsync(
+            url,
+            cancellationToken);
+
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content
+            .ReadFromJsonAsync<PagedResult<VisitorResponse>>(
+                cancellationToken: cancellationToken);
+
+        return result ?? new PagedResult<VisitorResponse>();
     }
 }
 
