@@ -1,3 +1,4 @@
+using VisitorManagement.Infrastructure.Messaging;
 using System.Text;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -90,6 +91,8 @@ try
 
     // Infrastructure.
     builder.Services.AddInfrastructure(builder.Configuration);
+    // Azure Storage Queue messaging.
+    builder.Services.AddVisitorQueueMessaging(builder.Configuration);
 
     // Application services.
     builder.Services.AddScoped<IAuthService, AuthService>();

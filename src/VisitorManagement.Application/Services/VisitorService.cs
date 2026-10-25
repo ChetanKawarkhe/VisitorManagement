@@ -1,5 +1,7 @@
 ﻿using FluentValidation;
+using Microsoft.Extensions.Logging;
 using VisitorManagement.Application.DTOs.Visitors;
+using VisitorManagement.Application.Events;
 using VisitorManagement.Application.Exceptions;
 using VisitorManagement.Application.Interfaces;
 using VisitorManagement.Domain.Entities;
@@ -17,6 +19,8 @@ public sealed class VisitorService : IVisitorService
     private readonly ICorrelationContext _correlationContext;
     private readonly IValidator<CreateVisitorRequest> _createValidator;
     private readonly IValidator<UpdateVisitorRequest> _updateValidator;
+    private readonly IVisitorEventPublisher _eventPublisher;
+    private readonly ILogger<VisitorService> _logger;
 
     public VisitorService(
         IVisitorRepository visitorRepository,
@@ -26,7 +30,9 @@ public sealed class VisitorService : IVisitorService
         IUnitOfWork unitOfWork,
         ICorrelationContext correlationContext,
         IValidator<CreateVisitorRequest> createValidator,
-        IValidator<UpdateVisitorRequest> updateValidator)
+        IValidator<UpdateVisitorRequest> updateValidator,
+        IVisitorEventPublisher eventPublisher,
+        ILogger<VisitorService> logger)
     {
         _visitorRepository = visitorRepository;
         _hostRepository = hostRepository;
@@ -36,6 +42,8 @@ public sealed class VisitorService : IVisitorService
         _correlationContext = correlationContext;
         _createValidator = createValidator;
         _updateValidator = updateValidator;
+        _eventPublisher = eventPublisher;
+        _logger = logger;
     }
 
     public async Task<VisitorResponse> CreateAsync(
@@ -67,6 +75,7 @@ public sealed class VisitorService : IVisitorService
             CreatedByUserId = currentUserId
         };
 
+        // Save visitor and database audit log atomically.
         await _unitOfWork.ExecuteInTransactionAsync(
             async ct =>
             {
@@ -96,7 +105,38 @@ public sealed class VisitorService : IVisitorService
                 "The saved visitor record could not be retrieved.");
         }
 
-        return MapToResponse(savedVisitor);
+        var response = MapToResponse(savedVisitor);
+
+        // Publish only after the database transaction has committed.
+        var visitorEvent = new VisitorCreatedEvent
+        {
+            MessageId = Guid.NewGuid(),
+            CorrelationId = _correlationContext.CorrelationId,
+            VisitorId = visitor.Id,
+            EventType = "VisitorCreated",
+            OccurredAt = DateTime.UtcNow
+        };
+
+        try
+        {
+            await _eventPublisher.PublishAsync(
+                visitorEvent,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Queue failure must not undo a successfully saved visitor.
+            _logger.LogWarning(
+                ex,
+                "Visitor saved but queue publication failed. " +
+                "VisitorId: {VisitorId}, MessageId: {MessageId}, " +
+                "CorrelationId: {CorrelationId}",
+                visitor.Id,
+                visitorEvent.MessageId,
+                visitorEvent.CorrelationId);
+        }
+
+        return response;
     }
 
     public async Task<VisitorResponse?> GetByIdAsync(
