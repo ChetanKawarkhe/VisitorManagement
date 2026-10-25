@@ -1,0 +1,529 @@
+﻿@page "/visitors/{Id:int}/edit"
+@attribute [Authorize(Roles = "Admin")]
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text.RegularExpressions
+@using VisitorManagement.Web.Models.Lookups
+@using VisitorManagement.Web.Models.Visitors
+
+@inject VisitorApiService VisitorApiService
+@inject LookupApiService LookupApiService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Edit Visitor</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">
+    Edit Visitor
+</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else if (!string.IsNullOrWhiteSpace(_loadError))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        @_loadError
+    </MudAlert>
+
+    <MudButton Variant="Variant.Outlined"
+               Href="/visitors">
+        Back to Visitors
+    </MudButton>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(_generalError))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @_generalError
+        </MudAlert>
+    }
+
+    @if (_isConflict)
+    {
+        <MudAlert Severity="Severity.Warning" Class="mb-4">
+            Another user has modified this visitor record.
+            Reload the latest information before editing again.
+        </MudAlert>
+
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Warning"
+                   Class="mb-4"
+                   OnClick="ReloadAsync">
+            Reload Latest Record
+        </MudButton>
+    }
+
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudGrid Spacing="3">
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Visitor Name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              MaxLength="100"
+                              @bind-Value="_model.VisitorName"
+                              Error="@HasError(nameof(UpdateVisitorRequest.VisitorName))"
+                              ErrorText="@GetError(nameof(UpdateVisitorRequest.VisitorName))"
+                              Disabled="@(_isSaving || _isConflict)" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Company Name"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              MaxLength="150"
+                              @bind-Value="_model.CompanyName"
+                              Error="@HasError(nameof(UpdateVisitorRequest.CompanyName))"
+                              ErrorText="@GetError(nameof(UpdateVisitorRequest.CompanyName))"
+                              Disabled="@(_isSaving || _isConflict)" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Mobile Number"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              MaxLength="16"
+                              @bind-Value="_model.MobileNumber"
+                              Error="@HasError(nameof(UpdateVisitorRequest.MobileNumber))"
+                              ErrorText="@GetError(nameof(UpdateVisitorRequest.MobileNumber))"
+                              Disabled="@(_isSaving || _isConflict)" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              Label="Email (Optional)"
+                              Variant="Variant.Outlined"
+                              MaxLength="254"
+                              @bind-Value="_model.Email"
+                              Error="@HasError(nameof(UpdateVisitorRequest.Email))"
+                              ErrorText="@GetError(nameof(UpdateVisitorRequest.Email))"
+                              Disabled="@(_isSaving || _isConflict)" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.body2" Class="mb-1">
+                    Visit Date and Time *
+                </MudText>
+
+                <input type="datetime-local"
+                       class="visitor-date-input"
+                       value="@_visitDateText"
+                       @onchange="OnVisitDateChanged"
+                       disabled="@(_isSaving || _isConflict)" />
+
+                @if (HasError(nameof(UpdateVisitorRequest.VisitDate)))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Error">
+                        @GetError(nameof(UpdateVisitorRequest.VisitDate))
+                    </MudText>
+                }
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudAutocomplete T="HostResponse"
+                                 Label="Host"
+                                 Variant="Variant.Outlined"
+                                 Required="true"
+                                 SearchFunc="SearchHostsAsync"
+                                 ToStringFunc="@(host => host?.FullName ?? string.Empty)"
+                                 @bind-Value="_selectedHost"
+                                 MinCharacters="0"
+                                 DebounceInterval="300"
+                                 Clearable="true"
+                                 Error="@HasError(nameof(UpdateVisitorRequest.HostId))"
+                                 ErrorText="@GetError(nameof(UpdateVisitorRequest.HostId))"
+                                 Disabled="@(_isSaving || _isConflict)" />
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudSelect T="int?"
+                           Label="Visit Purpose"
+                           Variant="Variant.Outlined"
+                           Required="true"
+                           @bind-Value="_selectedPurposeId"
+                           Error="@HasError(nameof(UpdateVisitorRequest.PurposeId))"
+                           ErrorText="@GetError(nameof(UpdateVisitorRequest.PurposeId))"
+                           Disabled="@(_isSaving || _isConflict)">
+
+                    @foreach (var purpose in _purposes)
+                    {
+                        <MudSelectItem T="int?"
+                                       Value="@((int?)purpose.Id)">
+                            @purpose.Name
+                        </MudSelectItem>
+                    }
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="6">
+                <MudSelect T="string"
+                           Label="Visitor Status"
+                           Variant="Variant.Outlined"
+                           Required="true"
+                           @bind-Value="_model.Status"
+                           Disabled="@(_isSaving || _isConflict)">
+
+                    <MudSelectItem T="string" Value="@("Scheduled")">
+                        Scheduled
+                    </MudSelectItem>
+
+                    <MudSelectItem T="string" Value="@("CheckedIn")">
+                        Checked In
+                    </MudSelectItem>
+
+                    <MudSelectItem T="string" Value="@("Completed")">
+                        Completed
+                    </MudSelectItem>
+
+                    <MudSelectItem T="string" Value="@("Cancelled")">
+                        Cancelled
+                    </MudSelectItem>
+
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudTextField T="string"
+                              Label="Remarks (Optional)"
+                              Variant="Variant.Outlined"
+                              Lines="4"
+                              MaxLength="500"
+                              Counter="500"
+                              @bind-Value="_model.Remarks"
+                              Error="@HasError(nameof(UpdateVisitorRequest.Remarks))"
+                              ErrorText="@GetError(nameof(UpdateVisitorRequest.Remarks))"
+                              Disabled="@(_isSaving || _isConflict)" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudStack Row="true" Spacing="2">
+
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="@(_isSaving || _isConflict)"
+                               OnClick="SaveAsync">
+
+                        @if (_isSaving)
+                        {
+                            <MudProgressCircular Size="Size.Small"
+                                                 Indeterminate="true"
+                                                 Class="mr-2" />
+                            <span>Saving...</span>
+                        }
+                        else
+                        {
+                            <span>Save Changes</span>
+                        }
+
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Secondary"
+                               Disabled="_isSaving"
+                               OnClick="Cancel">
+                        Cancel
+                    </MudButton>
+
+                </MudStack>
+            </MudItem>
+
+        </MudGrid>
+    </MudPaper>
+}
+
+<style>
+    .visitor-date-input {
+        width: 100%;
+        padding: 15px;
+        border: 1px solid #999;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 16px;
+        background: transparent;
+        color: inherit;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private UpdateVisitorRequest _model = new();
+    private HostResponse? _selectedHost;
+    private int? _selectedPurposeId;
+    private List<PurposeResponse> _purposes = [];
+
+    private Dictionary<string, string[]> _errors =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private string _visitDateText = string.Empty;
+    private string _generalError = string.Empty;
+    private string _loadError = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _isConflict;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _isConflict = false;
+        _loadError = string.Empty;
+        _generalError = string.Empty;
+        _errors.Clear();
+
+        try
+        {
+            var visitor = await VisitorApiService.GetByIdAsync(Id);
+
+            if (visitor is null)
+            {
+                _loadError = "Visitor record was not found.";
+                return;
+            }
+
+            _purposes = (await LookupApiService.GetPurposesAsync()).ToList();
+
+            var hosts = await LookupApiService.SearchHostsAsync(
+                visitor.HostName);
+
+            _selectedHost = hosts.FirstOrDefault(
+                host => host.Id == visitor.HostId);
+
+            _selectedPurposeId = visitor.PurposeId;
+
+            _model = new UpdateVisitorRequest
+                {
+                    VisitorName = visitor.VisitorName,
+                    CompanyName = visitor.CompanyName,
+                    MobileNumber = visitor.MobileNumber,
+                    Email = visitor.Email,
+                    VisitDate = visitor.VisitDate,
+                    HostId = visitor.HostId,
+                    PurposeId = visitor.PurposeId,
+                    Remarks = visitor.Remarks,
+                    Status = visitor.Status,
+                    RowVersion = visitor.RowVersion
+                };
+
+            _visitDateText = visitor.VisitDate.ToString("yyyy-MM-ddTHH:mm");
+        }
+        catch (Exception)
+        {
+            _loadError =
+                "Unable to load visitor information. Please try again.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task<IEnumerable<HostResponse>> SearchHostsAsync(
+        string? value,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await LookupApiService.SearchHostsAsync(
+                value,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+        catch (Exception)
+        {
+            return [];
+        }
+    }
+
+    private void OnVisitDateChanged(ChangeEventArgs args)
+    {
+        _visitDateText = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_isSaving || _isConflict)
+        {
+            return;
+        }
+
+        _errors.Clear();
+        _generalError = string.Empty;
+
+        if (!ValidateForm())
+        {
+            return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            _model.HostId = _selectedHost!.Id;
+            _model.PurposeId = _selectedPurposeId!.Value;
+            _model.VisitDate = DateTime.Parse(_visitDateText);
+
+            var result = await VisitorApiService.UpdateAsync(Id, _model);
+
+            if (result.IsSuccessful)
+            {
+                Snackbar.Add(
+                    "Visitor record updated successfully.",
+                    Severity.Success);
+
+                NavigationManager.NavigateTo($"/visitors/{Id}");
+                return;
+            }
+
+            if (result.IsConcurrencyConflict)
+            {
+                _isConflict = true;
+                _generalError =
+                    "This visitor record has changed since you opened it.";
+                return;
+            }
+
+            if (result.IsNotFound)
+            {
+                _generalError = "Visitor record was not found.";
+                return;
+            }
+
+            _errors = new Dictionary<string, string[]>(
+                result.Errors,
+                StringComparer.OrdinalIgnoreCase);
+
+            _generalError =
+                "Unable to update the visitor record. Reference: "
+                + result.CorrelationId + ".";
+        }
+        catch (Exception)
+        {
+            _generalError =
+                "Unable to update the visitor record. Please try again.";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new Dictionary<string, string[]>(
+            StringComparer.OrdinalIgnoreCase);
+
+        if (string.IsNullOrWhiteSpace(_model.VisitorName))
+        {
+            errors[nameof(UpdateVisitorRequest.VisitorName)] =
+                    ["Visitor name is required."];
+        }
+        else if (_model.VisitorName.Length > 100)
+        {
+            errors[nameof(UpdateVisitorRequest.VisitorName)] =
+                    ["Visitor name cannot exceed 100 characters."];
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.CompanyName))
+        {
+            errors[nameof(UpdateVisitorRequest.CompanyName)] =
+                    ["Company name is required."];
+        }
+        else if (_model.CompanyName.Length > 150)
+        {
+            errors[nameof(UpdateVisitorRequest.CompanyName)] =
+                    ["Company name cannot exceed 150 characters."];
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.MobileNumber) ||
+            !Regex.IsMatch(_model.MobileNumber, @"^\+?[0-9]{10,15}$"))
+        {
+            errors[nameof(UpdateVisitorRequest.MobileNumber)] =
+                    ["Enter a valid mobile number containing 10–15 digits."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.Email))
+        {
+            bool validEmail =
+                _model.Email.Length <= 254 &&
+                new EmailAddressAttribute().IsValid(_model.Email);
+
+            if (!validEmail)
+            {
+                errors[nameof(UpdateVisitorRequest.Email)] =
+                        ["Enter a valid email address."];
+            }
+        }
+
+        if (!DateTime.TryParse(_visitDateText, out var visitDate))
+        {
+            errors[nameof(UpdateVisitorRequest.VisitDate)] =
+                    ["Visit date and time are required."];
+        }
+
+        if (_selectedHost is null)
+        {
+            errors[nameof(UpdateVisitorRequest.HostId)] =
+                    ["Please select a host."];
+        }
+
+        if (!_selectedPurposeId.HasValue)
+        {
+            errors[nameof(UpdateVisitorRequest.PurposeId)] =
+                    ["Please select a purpose."];
+        }
+
+        if (_model.Remarks?.Length > 500)
+        {
+            errors[nameof(UpdateVisitorRequest.Remarks)] =
+                    ["Remarks cannot exceed 500 characters."];
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.RowVersion))
+        {
+            errors[nameof(UpdateVisitorRequest.RowVersion)] =
+                    ["Record version is missing. Reload the page."];
+        }
+
+        _errors = errors;
+        return errors.Count == 0;
+    }
+
+    private bool HasError(string field)
+    {
+        return _errors.ContainsKey(field);
+    }
+
+    private string GetError(string field)
+    {
+        return _errors.TryGetValue(field, out var messages)
+            ? string.Join(" ", messages)
+            : string.Empty;
+    }
+
+    private Task ReloadAsync()
+    {
+        return LoadAsync();
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo($"/visitors/{Id}");
+    }
+}

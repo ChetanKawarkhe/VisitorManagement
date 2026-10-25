@@ -106,6 +106,7 @@
             <MudTh>Host</MudTh>
             <MudTh>Purpose</MudTh>
             <MudTh>Status</MudTh>
+            <MudTh>Actions</MudTh>
         </HeaderContent>
 
         <RowTemplate>
@@ -139,6 +140,14 @@
                          Size="Size.Small">
                     @context.Status
                 </MudChip>
+            </MudTd>
+            <MudTd DataLabel="Actions">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           Size="Size.Small"
+                           Href="@($"/visitors/{context.Id}")">
+                    View
+                </MudButton>
             </MudTd>
         </RowTemplate>
 
