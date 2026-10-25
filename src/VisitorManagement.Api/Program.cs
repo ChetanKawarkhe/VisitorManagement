@@ -172,6 +172,27 @@ try
 
     builder.Services.AddAuthorization();
 
+    // Allow the configured Blazor WebAssembly origin.
+    const string blazorCorsPolicy = "BlazorWeb";
+
+    var allowedOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? Array.Empty<string>();
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(blazorCorsPolicy, policy =>
+        {
+            if (allowedOrigins.Length > 0)
+            {
+                policy
+                    .WithOrigins(allowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            }
+        });
+    });
+
     // Swagger.
     builder.Services.AddSwaggerGen(options =>
     {
@@ -312,10 +333,13 @@ try
     // 5. HTTPS.
     app.UseHttpsRedirection();
 
-    // 6. Authentication and authorization.
+    // 6. Allow requests from the configured Blazor origin.
+    // CORS must execute before authentication and authorization.
+    app.UseCors(blazorCorsPolicy);
+
+    // 7. Authentication and authorization.
     app.UseAuthentication();
     app.UseAuthorization();
-
     // 7. Swagger in development.
     if (app.Environment.IsDevelopment())
     {
