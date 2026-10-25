@@ -1,7 +1,104 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Dashboard - Visitor Management</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudText Typo="Typo.h4"
+         GutterBottom="true">
+    Visitor Management Dashboard
+</MudText>
 
-Welcome to your new app.
+<MudText Typo="Typo.body1"
+         Class="mb-6">
+    Welcome to the Employee Visitor Management Application.
+</MudText>
+
+<MudGrid>
+
+    <MudItem xs="12" sm="6" md="4">
+
+        <MudPaper Elevation="2"
+                  Class="pa-6">
+
+            <MudIcon Icon="@Icons.Material.Filled.People"
+                     Color="Color.Primary"
+                     Size="Size.Large" />
+
+            <MudText Typo="Typo.h6"
+                     Class="mt-3">
+                Visitor Records
+            </MudText>
+
+            <MudText Typo="Typo.body2"
+                     Class="mt-2 mb-4">
+                View and manage visitor registrations.
+            </MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Href="/visitors">
+                View Visitors
+            </MudButton>
+
+        </MudPaper>
+
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+
+        <MudPaper Elevation="2"
+                  Class="pa-6">
+
+            <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
+                     Color="Color.Success"
+                     Size="Size.Large" />
+
+            <MudText Typo="Typo.h6"
+                     Class="mt-3">
+                Register Visitor
+            </MudText>
+
+            <MudText Typo="Typo.body2"
+                     Class="mt-2 mb-4">
+                Create a new visitor registration.
+            </MudText>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Success"
+                       Href="/visitors/create">
+                Register Visitor
+            </MudButton>
+
+        </MudPaper>
+
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+
+        <MudPaper Elevation="2"
+                  Class="pa-6">
+
+            <MudIcon Icon="@Icons.Material.Filled.Security"
+                     Color="Color.Info"
+                     Size="Size.Large" />
+
+            <MudText Typo="Typo.h6"
+                     Class="mt-3">
+                Secure Access
+            </MudText>
+
+            <MudText Typo="Typo.body2"
+                     Class="mt-2 mb-4">
+                Sign in to access authorized features.
+            </MudText>
+
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Info"
+                       Href="/login">
+                Login
+            </MudButton>
+
+        </MudPaper>
+
+    </MudItem>
+
+</MudGrid>
