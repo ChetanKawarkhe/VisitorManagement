@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VisitorManagement.Application.Interfaces;
 using VisitorManagement.Domain.Entities;
 using VisitorManagement.Infrastructure.Authentication;
+using VisitorManagement.Infrastructure.Messaging;
 using VisitorManagement.Infrastructure.Persistence;
 using VisitorManagement.Infrastructure.Repositories;
 
@@ -38,6 +39,9 @@ public static class DependencyInjection
         services.AddScoped<IPurposeRepository, PurposeRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+
+        // Background event processing
+        services.AddScoped<IVisitorEventProcessor, VisitorEventProcessor>();
 
         // Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
