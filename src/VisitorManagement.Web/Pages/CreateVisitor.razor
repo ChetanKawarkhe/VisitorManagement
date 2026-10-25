@@ -1,12 +1,488 @@
 ﻿@page "/visitors/create"
+@attribute [Authorize(Roles = "Admin")]
+
+@using System.ComponentModel.DataAnnotations
+@using System.Text.RegularExpressions
+@using VisitorManagement.Web.Models.Lookups
+@using VisitorManagement.Web.Models.Visitors
+
+@inject LookupApiService LookupApiService
+@inject VisitorApiService VisitorApiService
+@inject ISnackbar Snackbar
 
 <PageTitle>Register Visitor - Visitor Management</PageTitle>
 
-<MudText Typo="Typo.h4"
-         GutterBottom="true">
+<MudText Typo="Typo.h4" GutterBottom="true">
     Register Visitor
 </MudText>
 
-<MudAlert Severity="Severity.Info">
-    The visitor registration form will be implemented in a later part of Step 9.
-</MudAlert>
+<MudText Typo="Typo.body1" Class="mb-6">
+    Enter visitor details to create a new registration.
+</MudText>
+
+@if (!string.IsNullOrWhiteSpace(_generalError))
+{
+    <MudAlert Severity="Severity.Error" Class="mb-4">
+        @_generalError
+    </MudAlert>
+}
+
+@if (!string.IsNullOrWhiteSpace(_lookupError))
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        @_lookupError
+    </MudAlert>
+}
+
+<MudPaper Elevation="2" Class="pa-6">
+
+    <MudGrid Spacing="3">
+
+        <MudItem xs="12" md="6">
+
+            <MudTextField T="string"
+                          Label="Visitor Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          MaxLength="100"
+                          Value="@_model.VisitorName"
+                          ValueChanged="@((string value) => _model.VisitorName = value)"
+                          Error="@HasError(nameof(CreateVisitorRequest.VisitorName))"
+                          ErrorText="@GetError(nameof(CreateVisitorRequest.VisitorName))"
+                          Disabled="_isSaving" />
+
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+
+            <MudTextField T="string"
+                          Label="Company Name"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          MaxLength="150"
+                          Value="@_model.CompanyName"
+                          ValueChanged="@((string value) => _model.CompanyName = value)"
+                          Error="@HasError(nameof(CreateVisitorRequest.CompanyName))"
+                          ErrorText="@GetError(nameof(CreateVisitorRequest.CompanyName))"
+                          Disabled="_isSaving" />
+
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+
+            <MudTextField T="string"
+                          Label="Mobile Number"
+                          Variant="Variant.Outlined"
+                          Required="true"
+                          MaxLength="16"
+                          Value="@_model.MobileNumber"
+                          ValueChanged="@((string value) => _model.MobileNumber = value)"
+                          Error="@HasError(nameof(CreateVisitorRequest.MobileNumber))"
+                          ErrorText="@GetError(nameof(CreateVisitorRequest.MobileNumber))"
+                          Disabled="_isSaving" />
+
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+
+            <MudTextField T="string"
+                          Label="Email (Optional)"
+                          Variant="Variant.Outlined"
+                          MaxLength="254"
+                          Value="@_model.Email"
+                          ValueChanged="@((string value) => _model.Email = value)"
+                          Error="@HasError(nameof(CreateVisitorRequest.Email))"
+                          ErrorText="@GetError(nameof(CreateVisitorRequest.Email))"
+                          Disabled="_isSaving" />
+
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+
+            <MudText Typo="Typo.body2" Class="mb-1">
+                Visit Date and Time *
+            </MudText>
+
+            <input type="datetime-local"
+                   class="visitor-date-input"
+                   min="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")"
+                   value="@_visitDateText"
+                   @onchange="OnVisitDateChanged"
+                   disabled="@_isSaving" />
+
+            @if (HasError(nameof(CreateVisitorRequest.VisitDate)))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error">
+                    @GetError(nameof(CreateVisitorRequest.VisitDate))
+                </MudText>
+            }
+
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+
+            <MudAutocomplete T="HostResponse"
+                             Label="Host"
+                             Variant="Variant.Outlined"
+                             Required="true"
+                             SearchFunc="SearchHostsAsync"
+                             ToStringFunc="@(host => host?.FullName ?? string.Empty)"
+                             @bind-Value="_selectedHost"
+                             MinCharacters="0"
+                             DebounceInterval="300"
+                             ResetValueOnEmptyText="true"
+                             Clearable="true"
+                             Error="@HasError(nameof(CreateVisitorRequest.HostId))"
+                             ErrorText="@GetError(nameof(CreateVisitorRequest.HostId))"
+                             Disabled="_isSaving" />
+
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+
+            <MudSelect T="int?"
+                       Label="Visit Purpose"
+                       Variant="Variant.Outlined"
+                       Required="true"
+                       @bind-Value="_selectedPurposeId"
+                       Error="@HasError(nameof(CreateVisitorRequest.PurposeId))"
+                       ErrorText="@GetError(nameof(CreateVisitorRequest.PurposeId))"
+                       Disabled="@(_isSaving || _loadingPurposes)">
+
+                @foreach (var purpose in _purposes)
+                {
+                    <MudSelectItem T="int?"
+                                   Value="@((int?)purpose.Id)">
+                        @purpose.Name
+                    </MudSelectItem>
+                }
+
+            </MudSelect>
+
+        </MudItem>
+
+        <MudItem xs="12">
+
+            <MudTextField T="string"
+                          Label="Remarks (Optional)"
+                          Variant="Variant.Outlined"
+                          Lines="4"
+                          MaxLength="500"
+                          Counter="500"
+                          Value="@_model.Remarks"
+                          ValueChanged="@((string value) => _model.Remarks = value)"
+                          Error="@HasError(nameof(CreateVisitorRequest.Remarks))"
+                          ErrorText="@GetError(nameof(CreateVisitorRequest.Remarks))"
+                          Disabled="_isSaving" />
+
+        </MudItem>
+
+        <MudItem xs="12">
+
+            <MudStack Row="true" Spacing="2">
+
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@(_isSaving || _loadingPurposes)"
+                           OnClick="SubmitAsync">
+
+                    @if (_isSaving)
+                    {
+                        <MudProgressCircular Size="Size.Small"
+                                             Indeterminate="true"
+                                             Class="mr-2" />
+                        <span>Saving...</span>
+                    }
+                    else
+                    {
+                        <span>Submit</span>
+                    }
+
+                </MudButton>
+
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Secondary"
+                           Disabled="_isSaving"
+                           OnClick="ClearForm">
+                    Cancel
+                </MudButton>
+
+            </MudStack>
+
+        </MudItem>
+
+    </MudGrid>
+
+</MudPaper>
+
+<style>
+    .visitor-date-input {
+        width: 100%;
+        padding: 15px;
+        border: 1px solid #999;
+        border-radius: 4px;
+        font-family: inherit;
+        font-size: 16px;
+        background: transparent;
+        color: inherit;
+    }
+
+    .visitor-date-input:focus {
+        outline: 2px solid #594ae2;
+        border-color: transparent;
+    }
+
+    .visitor-date-input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+</style>
+
+@code {
+
+    private CreateVisitorRequest _model = new();
+
+    private HostResponse? _selectedHost;
+
+    private int? _selectedPurposeId;
+
+    private List<PurposeResponse> _purposes = [];
+
+    private Dictionary<string, string[]> _errors =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    private string _visitDateText = string.Empty;
+
+    private string _generalError = string.Empty;
+
+    private string _lookupError = string.Empty;
+
+    private bool _isSaving;
+
+    private bool _loadingPurposes = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var purposes = await LookupApiService.GetPurposesAsync();
+
+            _purposes = purposes.ToList();
+        }
+        catch (Exception)
+        {
+            _lookupError =
+                "Unable to load visit purposes. Please refresh the page.";
+        }
+        finally
+        {
+            _loadingPurposes = false;
+        }
+    }
+
+    private async Task<IEnumerable<HostResponse>> SearchHostsAsync(
+        string? value,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var hosts = await LookupApiService.SearchHostsAsync(
+                value,
+                cancellationToken);
+
+            return hosts;
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+        catch (Exception)
+        {
+            _lookupError =
+                "Unable to load hosts. Please try searching again.";
+
+            return [];
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_isSaving)
+        {
+            return;
+        }
+
+        _generalError = string.Empty;
+
+        _errors.Clear();
+
+        if (!ValidateForm())
+        {
+            return;
+        }
+
+        _isSaving = true;
+
+        try
+        {
+            _model.HostId = _selectedHost!.Id;
+
+            _model.PurposeId = _selectedPurposeId!.Value;
+
+            _model.VisitDate = DateTime.Parse(_visitDateText);
+
+            var result = await VisitorApiService.CreateAsync(_model);
+
+            if (result.IsSuccessful)
+            {
+                Snackbar.Add(
+                    "Visitor record saved successfully.",
+                    Severity.Success);
+
+                ClearForm();
+                return;
+            }
+
+            if (result.Errors.Count > 0)
+            {
+                _errors = new Dictionary<string, string[]>(
+                    result.Errors,
+                    StringComparer.OrdinalIgnoreCase);
+            }
+
+            _generalError =
+                "Unable to save the visitor record. Please try again. Reference: "
+                + result.CorrelationId + ".";
+        }
+        catch (Exception)
+        {
+            _generalError =
+                "Unable to save the visitor record. Please try again. Reference: "
+                + Guid.NewGuid().ToString("D") + ".";
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private bool ValidateForm()
+    {
+        var errors = new Dictionary<string, string[]>(
+            StringComparer.OrdinalIgnoreCase);
+
+        if (string.IsNullOrWhiteSpace(_model.VisitorName))
+        {
+            errors[nameof(CreateVisitorRequest.VisitorName)] =
+                    ["Visitor name is required."];
+        }
+        else if (_model.VisitorName.Length > 100)
+        {
+            errors[nameof(CreateVisitorRequest.VisitorName)] =
+                    ["Visitor name cannot exceed 100 characters."];
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.CompanyName))
+        {
+            errors[nameof(CreateVisitorRequest.CompanyName)] =
+                    ["Company name is required."];
+        }
+        else if (_model.CompanyName.Length > 150)
+        {
+            errors[nameof(CreateVisitorRequest.CompanyName)] =
+                    ["Company name cannot exceed 150 characters."];
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.MobileNumber) ||
+            !Regex.IsMatch(
+                _model.MobileNumber,
+                @"^\+?[0-9]{10,15}$"))
+        {
+            errors[nameof(CreateVisitorRequest.MobileNumber)] =
+                    ["Enter a valid mobile number containing 10–15 digits."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(_model.Email))
+        {
+            bool validEmail =
+                _model.Email.Length <= 254 &&
+                new EmailAddressAttribute().IsValid(_model.Email);
+
+            if (!validEmail)
+            {
+                errors[nameof(CreateVisitorRequest.Email)] =
+                        ["Enter a valid email address."];
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(_visitDateText) ||
+            !DateTime.TryParse(
+                _visitDateText,
+                out var visitDate))
+        {
+            errors[nameof(CreateVisitorRequest.VisitDate)] =
+                    ["Visit date and time are required."];
+        }
+        else if (visitDate < DateTime.Now)
+        {
+            errors[nameof(CreateVisitorRequest.VisitDate)] =
+                    ["Visit date and time cannot be in the past."];
+        }
+
+        if (_selectedHost is null || _selectedHost.Id <= 0)
+        {
+            errors[nameof(CreateVisitorRequest.HostId)] =
+                    ["Please select a host."];
+        }
+
+        if (!_selectedPurposeId.HasValue ||
+            _selectedPurposeId.Value <= 0)
+        {
+            errors[nameof(CreateVisitorRequest.PurposeId)] =
+                    ["Please select a visit purpose."];
+        }
+
+        if (_model.Remarks?.Length > 500)
+        {
+            errors[nameof(CreateVisitorRequest.Remarks)] =
+                    ["Remarks cannot exceed 500 characters."];
+        }
+
+        _errors = errors;
+
+        return errors.Count == 0;
+    }
+
+    private bool HasError(string fieldName)
+    {
+        return _errors.ContainsKey(fieldName);
+    }
+
+    private string GetError(string fieldName)
+    {
+        return _errors.TryGetValue(
+            fieldName,
+            out var messages)
+            ? string.Join(" ", messages)
+            : string.Empty;
+    }
+
+    private void ClearForm()
+    {
+        _model = new CreateVisitorRequest();
+
+        _selectedHost = null;
+
+        _selectedPurposeId = null;
+
+        _visitDateText = string.Empty;
+
+        _errors.Clear();
+
+        _generalError = string.Empty;
+    }
+    private void OnVisitDateChanged(ChangeEventArgs args)
+    {
+        _visitDateText = args.Value?.ToString() ?? string.Empty;
+    }
+}

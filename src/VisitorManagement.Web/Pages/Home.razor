@@ -14,91 +14,109 @@
 
 <MudGrid>
 
-    <MudItem xs="12" sm="6" md="4">
+    <AuthorizeView Roles="Admin,User">
+        <Authorized>
 
-        <MudPaper Elevation="2"
-                  Class="pa-6">
+            <MudItem xs="12" sm="6" md="4">
 
-            <MudIcon Icon="@Icons.Material.Filled.People"
-                     Color="Color.Primary"
-                     Size="Size.Large" />
+                <MudPaper Elevation="2"
+                          Class="pa-6">
 
-            <MudText Typo="Typo.h6"
-                     Class="mt-3">
-                Visitor Records
-            </MudText>
+                    <MudIcon Icon="@Icons.Material.Filled.People"
+                             Color="Color.Primary"
+                             Size="Size.Large" />
 
-            <MudText Typo="Typo.body2"
-                     Class="mt-2 mb-4">
-                View and manage visitor registrations.
-            </MudText>
+                    <MudText Typo="Typo.h6"
+                             Class="mt-3">
+                        Visitor Records
+                    </MudText>
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       Href="/visitors">
-                View Visitors
-            </MudButton>
+                    <MudText Typo="Typo.body2"
+                             Class="mt-2 mb-4">
+                        View and manage visitor registrations.
+                    </MudText>
 
-        </MudPaper>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Href="/visitors">
+                        View Visitors
+                    </MudButton>
 
-    </MudItem>
+                </MudPaper>
 
-    <MudItem xs="12" sm="6" md="4">
+            </MudItem>
 
-        <MudPaper Elevation="2"
-                  Class="pa-6">
+        </Authorized>
+    </AuthorizeView>
 
-            <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
-                     Color="Color.Success"
-                     Size="Size.Large" />
+    <AuthorizeView Roles="Admin">
+        <Authorized>
 
-            <MudText Typo="Typo.h6"
-                     Class="mt-3">
-                Register Visitor
-            </MudText>
+            <MudItem xs="12" sm="6" md="4">
 
-            <MudText Typo="Typo.body2"
-                     Class="mt-2 mb-4">
-                Create a new visitor registration.
-            </MudText>
+                <MudPaper Elevation="2"
+                          Class="pa-6">
 
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Success"
-                       Href="/visitors/create">
-                Register Visitor
-            </MudButton>
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd"
+                             Color="Color.Success"
+                             Size="Size.Large" />
 
-        </MudPaper>
+                    <MudText Typo="Typo.h6"
+                             Class="mt-3">
+                        Register Visitor
+                    </MudText>
 
-    </MudItem>
+                    <MudText Typo="Typo.body2"
+                             Class="mt-2 mb-4">
+                        Create a new visitor registration.
+                    </MudText>
 
-    <MudItem xs="12" sm="6" md="4">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               Href="/visitors/create">
+                        Register Visitor
+                    </MudButton>
 
-        <MudPaper Elevation="2"
-                  Class="pa-6">
+                </MudPaper>
 
-            <MudIcon Icon="@Icons.Material.Filled.Security"
-                     Color="Color.Info"
-                     Size="Size.Large" />
+            </MudItem>
 
-            <MudText Typo="Typo.h6"
-                     Class="mt-3">
-                Secure Access
-            </MudText>
+        </Authorized>
+    </AuthorizeView>
 
-            <MudText Typo="Typo.body2"
-                     Class="mt-2 mb-4">
-                Sign in to access authorized features.
-            </MudText>
+    <AuthorizeView>
+        <NotAuthorized>
 
-            <MudButton Variant="Variant.Outlined"
-                       Color="Color.Info"
-                       Href="/login">
-                Login
-            </MudButton>
+            <MudItem xs="12" sm="6" md="4">
 
-        </MudPaper>
+                <MudPaper Elevation="2"
+                          Class="pa-6">
 
-    </MudItem>
+                    <MudIcon Icon="@Icons.Material.Filled.Security"
+                             Color="Color.Info"
+                             Size="Size.Large" />
+
+                    <MudText Typo="Typo.h6"
+                             Class="mt-3">
+                        Secure Access
+                    </MudText>
+
+                    <MudText Typo="Typo.body2"
+                             Class="mt-2 mb-4">
+                        Sign in to access authorized features.
+                    </MudText>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Info"
+                               Href="/login">
+                        Login
+                    </MudButton>
+
+                </MudPaper>
+
+            </MudItem>
+
+        </NotAuthorized>
+    </AuthorizeView>
 
 </MudGrid>

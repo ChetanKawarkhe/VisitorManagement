@@ -1,5 +1,8 @@
 ﻿@inherits LayoutComponentBase
 
+@inject AuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+
 <MudThemeProvider />
 
 <MudPopoverProvider />
@@ -10,7 +13,8 @@
 
 <MudLayout>
 
-    <MudAppBar Elevation="1" Color="Color.Primary">
+    <MudAppBar Elevation="1"
+               Color="Color.Primary">
 
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
@@ -23,10 +27,34 @@
 
         <MudSpacer />
 
-        <MudText Typo="Typo.body2"
-                 Class="mr-3">
-            Visitor Management System
-        </MudText>
+        <AuthorizeView>
+
+            <Authorized>
+
+                <MudText Typo="Typo.body2"
+                         Class="mr-3">
+                    @context.User.Identity?.Name
+                </MudText>
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           OnClick="HandleLogoutAsync">
+                    Logout
+                </MudButton>
+
+            </Authorized>
+
+            <NotAuthorized>
+
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Inherit"
+                           Href="/login">
+                    Login
+                </MudButton>
+
+            </NotAuthorized>
+
+        </AuthorizeView>
 
     </MudAppBar>
 
@@ -51,15 +79,44 @@
                 Dashboard
             </MudNavLink>
 
-            <MudNavLink Href="/visitors"
-                        Icon="@Icons.Material.Filled.People">
-                Visitors
-            </MudNavLink>
+            <AuthorizeView>
 
-            <MudNavLink Href="/login"
-                        Icon="@Icons.Material.Filled.Login">
-                Login
-            </MudNavLink>
+                <Authorized>
+
+                    <MudNavLink Href="/visitors"
+                                Icon="@Icons.Material.Filled.People">
+                        Visitors
+                    </MudNavLink>
+
+                </Authorized>
+
+            </AuthorizeView>
+
+            <AuthorizeView Roles="Admin">
+
+                <Authorized>
+
+                    <MudNavLink Href="/visitors/create"
+                                Icon="@Icons.Material.Filled.PersonAdd">
+                        Register Visitor
+                    </MudNavLink>
+
+                </Authorized>
+
+            </AuthorizeView>
+
+            <AuthorizeView>
+
+                <NotAuthorized>
+
+                    <MudNavLink Href="/login"
+                                Icon="@Icons.Material.Filled.Login">
+                        Login
+                    </MudNavLink>
+
+                </NotAuthorized>
+
+            </AuthorizeView>
 
         </MudNavMenu>
 
@@ -86,4 +143,10 @@
         _drawerOpen = !_drawerOpen;
     }
 
+    private async Task HandleLogoutAsync()
+    {
+        await AuthenticationService.LogoutAsync();
+
+        NavigationManager.NavigateTo("/login");
+    }
 }

@@ -1,12 +1,50 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
-        </LayoutView>
-    </NotFound>
-</Router>
+﻿<CascadingAuthenticationState>
+
+    <Router AppAssembly="@typeof(App).Assembly">
+
+        <Found Context="routeData">
+
+            <AuthorizeRouteView RouteData="@routeData"
+                                DefaultLayout="@typeof(Layout.MainLayout)">
+
+                <NotAuthorized>
+
+                    <LayoutView Layout="@typeof(Layout.MainLayout)">
+
+                        <MudAlert Severity="Severity.Warning">
+                            You are not authorized to access this page.
+                        </MudAlert>
+
+                        <MudButton Href="/login"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled"
+                                   Class="mt-4">
+                            Go to Login
+                        </MudButton>
+
+                    </LayoutView>
+
+                </NotAuthorized>
+
+            </AuthorizeRouteView>
+
+            <FocusOnNavigate RouteData="@routeData"
+                             Selector="h1" />
+
+        </Found>
+
+        <NotFound>
+
+            <LayoutView Layout="@typeof(Layout.MainLayout)">
+
+                <MudAlert Severity="Severity.Warning">
+                    The requested page was not found.
+                </MudAlert>
+
+            </LayoutView>
+
+        </NotFound>
+
+    </Router>
+
+</CascadingAuthenticationState>

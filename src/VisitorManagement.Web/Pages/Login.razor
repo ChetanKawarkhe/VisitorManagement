@@ -1,5 +1,9 @@
 ﻿@page "/login"
 
+@inject AuthenticationService AuthenticationService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
 <PageTitle>Login - Visitor Management</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small"
@@ -8,23 +12,183 @@
     <MudPaper Elevation="3"
               Class="pa-8">
 
-        <MudText Typo="Typo.h5"
-                 GutterBottom="true">
-            Sign In
-        </MudText>
+        <MudStack Spacing="3">
 
-        <MudText Typo="Typo.body2"
-                 Class="mb-4">
-            Login functionality will be implemented in Part 3.
-        </MudText>
+            <MudText Typo="Typo.h4"
+                     Align="Align.Center"
+                     Color="Color.Primary">
+                Visitor Management
+            </MudText>
 
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   Disabled="true"
-                   FullWidth="true">
-            Sign In
-        </MudButton>
+            <MudText Typo="Typo.subtitle1"
+                     Align="Align.Center">
+                Sign in to your account
+            </MudText>
+
+            @if (_sessionExpired)
+            {
+                <MudAlert Severity="Severity.Warning">
+                    Your session has expired. Please sign in again.
+                </MudAlert>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+            <MudForm @ref="_form">
+
+                <MudTextField T="string"
+                              Label="Username"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Username is required."
+                              @bind-Value="_username"
+                              Disabled="_isSubmitting"
+                              Class="mb-4" />
+
+                <MudTextField T="string"
+                              Label="Password"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Required="true"
+                              RequiredError="Password is required."
+                              @bind-Value="_password"
+                              Disabled="_isSubmitting" />
+
+            </MudForm>
+
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Disabled="_isSubmitting"
+                       OnClick="HandleLoginAsync">
+
+                @if (_isSubmitting)
+                {
+                    <MudProgressCircular Size="Size.Small"
+                                         Indeterminate="true"
+                                         Class="mr-2" />
+
+                    <MudText>Signing in...</MudText>
+                }
+                else
+                {
+                    <MudText>Sign In</MudText>
+                }
+
+            </MudButton>
+
+        </MudStack>
 
     </MudPaper>
 
 </MudContainer>
+
+@code {
+
+    private MudForm? _form;
+
+    private string _username = string.Empty;
+
+    private string _password = string.Empty;
+
+    private string _errorMessage = string.Empty;
+
+    private bool _isSubmitting;
+
+    private bool _sessionExpired;
+
+    protected override void OnInitialized()
+    {
+        var uri = NavigationManager.ToAbsoluteUri(
+            NavigationManager.Uri);
+
+        var query = uri.Query.TrimStart('?');
+
+        _sessionExpired = query
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Any(parameter =>
+                string.Equals(
+                    Uri.UnescapeDataString(
+                        parameter.Split('=', 2)[0]),
+                    "expired",
+                    StringComparison.OrdinalIgnoreCase)
+                &&
+                string.Equals(
+                    Uri.UnescapeDataString(
+                        parameter.Split('=', 2).ElementAtOrDefault(1)
+                        ?? string.Empty),
+                    "true",
+                    StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task HandleLoginAsync()
+    {
+        if (_isSubmitting)
+        {
+            return;
+        }
+
+        _errorMessage = string.Empty;
+
+        if (_form is null)
+        {
+            return;
+        }
+
+        await _form.Validate();
+
+        if (!_form.IsValid)
+        {
+            return;
+        }
+
+        _isSubmitting = true;
+
+        try
+        {
+            var result = await AuthenticationService.LoginAsync(
+                _username,
+                _password);
+
+            if (result.IsSuccessful)
+            {
+                Snackbar.Add(
+                    "Login successful.",
+                    Severity.Success);
+
+                NavigationManager.NavigateTo("/");
+                return;
+            }
+
+            if (result.AreCredentialsInvalid)
+            {
+                _errorMessage =
+                    "Invalid username or password. Please verify your credentials and try again.";
+            }
+            else
+            {
+                _errorMessage =
+                    "Unable to sign in. Please try again later.";
+            }
+        }
+        catch (HttpRequestException)
+        {
+            _errorMessage =
+                "Unable to connect to the server. Please try again later.";
+        }
+        catch (Exception)
+        {
+            _errorMessage =
+                "Unable to sign in. Please try again later.";
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

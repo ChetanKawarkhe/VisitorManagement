@@ -1,4 +1,5 @@
 ﻿@page "/visitors"
+@attribute [Authorize(Roles = "Admin,User")]
 
 <PageTitle>Visitors - Visitor Management</PageTitle>
 
@@ -8,5 +9,5 @@
 </MudText>
 
 <MudAlert Severity="Severity.Info">
-    Visitor listing will be implemented in a later part of Step 9.
+    Visitor listing will be implemented in the next part of Step 9.
 </MudAlert>
