@@ -2,25 +2,30 @@ using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using VisitorManagement.Application.Events;
+using VisitorManagement.Application.Interfaces;
 
 namespace VisitorManagement.Functions;
 
 public sealed class VisitorCreatedQueueFunction
 {
+    private readonly IVisitorEventProcessor _processor;
     private readonly ILogger<VisitorCreatedQueueFunction> _logger;
 
     public VisitorCreatedQueueFunction(
+        IVisitorEventProcessor processor,
         ILogger<VisitorCreatedQueueFunction> logger)
     {
+        _processor = processor;
         _logger = logger;
     }
 
     [Function(nameof(VisitorCreatedQueueFunction))]
-    public void Run(
+    public async Task RunAsync(
         [QueueTrigger(
             "visitor-created",
             Connection = "AzureWebJobsStorage")]
-        string message)
+        string message,
+        CancellationToken cancellationToken)
     {
         var visitorEvent =
             JsonSerializer.Deserialize<VisitorCreatedEvent>(
@@ -36,39 +41,39 @@ public sealed class VisitorCreatedQueueFunction
                 "Queue message could not be deserialized.");
         }
 
-        if (visitorEvent.MessageId == Guid.Empty)
+        if (visitorEvent.MessageId == Guid.Empty ||
+            visitorEvent.VisitorId <= 0 ||
+            visitorEvent.EventType != "VisitorCreated" ||
+            string.IsNullOrWhiteSpace(visitorEvent.CorrelationId))
         {
             throw new InvalidOperationException(
-                "Queue message has an invalid MessageId.");
-        }
-
-        if (visitorEvent.VisitorId <= 0)
-        {
-            throw new InvalidOperationException(
-                "Queue message has an invalid VisitorId.");
-        }
-
-        if (visitorEvent.EventType != "VisitorCreated")
-        {
-            throw new InvalidOperationException(
-                "Unsupported visitor event type.");
-        }
-
-        if (string.IsNullOrWhiteSpace(visitorEvent.CorrelationId))
-        {
-            throw new InvalidOperationException(
-                "Queue message has no CorrelationId.");
+                "Queue message contains invalid visitor event data.");
         }
 
         _logger.LogInformation(
-            "VisitorCreated event received. " +
+            "Processing visitor event. " +
             "MessageId: {MessageId}, " +
-            "CorrelationId: {CorrelationId}, " +
             "VisitorId: {VisitorId}, " +
-            "EventType: {EventType}",
+            "CorrelationId: {CorrelationId}",
             visitorEvent.MessageId,
-            visitorEvent.CorrelationId,
             visitorEvent.VisitorId,
-            visitorEvent.EventType);
+            visitorEvent.CorrelationId);
+
+        var processed = await _processor.ProcessAsync(
+            visitorEvent,
+            cancellationToken);
+
+        if (processed)
+        {
+            _logger.LogInformation(
+                "Visitor event processing completed. MessageId: {MessageId}",
+                visitorEvent.MessageId);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Duplicate visitor event ignored. MessageId: {MessageId}",
+                visitorEvent.MessageId);
+        }
     }
 }

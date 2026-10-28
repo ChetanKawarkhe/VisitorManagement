@@ -26,5 +26,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\src\VisitorManagement.Application\VisitorManagement.Application.csproj" />
+    <ProjectReference Include="..\src\VisitorManagement.Infrastructure\VisitorManagement.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
