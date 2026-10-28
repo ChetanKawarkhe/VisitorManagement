@@ -1,3 +1,26 @@
+# Employee Visitor Management System
+
+## 📸 Application Screenshots
+
+### 1. Login Page
+![Login Page](assets/LoginPage.png)
+
+### 2. Dashboard
+![Dashboard](assets/Dashboard.png)
+
+### 3. Visitor List
+![Visitor List](assets/VisitorList.png)
+
+### 4. Visitor Details
+![Visitor Details](assets/VisitorView.png)
+
+### 5. Edit Visitor
+![Edit Visitor](assets/VisitorEdit.png)
+
+### 6. Register Visitor
+![Register Visitor](assets/RegisterVisitor.png)
+
+---
 # Employee Visitor Management Application
 
 A full-stack employee visitor management system built using **ASP.NET Core 8 Web API, Blazor WebAssembly, MudBlazor, Entity Framework Core, SQL Server, Azure Storage Queues, and Azure Functions**.
